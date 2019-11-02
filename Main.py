@@ -133,9 +133,9 @@ def run_generation(generation, params):
     running_procs = []
     results = {}
 
-    for i in generation:
+    for i, e in enumerate(generation):
         my_env = os.environ.copy()
-        my_env["SSFLAGS"] = dna_to_options(i.DNA, params)
+        my_env["SSFLAGS"] = dna_to_options(e.DNA, params)
         proc = Popen(['./run-wattch'], stdout=PIPE, stderr=PIPE, env=my_env)
         results[proc.pid] = [i, math.inf]
         running_procs.append(proc)
