@@ -153,15 +153,21 @@ def run_generation(generation, params):
         if retcode == None:
             output, error = proc.communicate()
             results[proc.pid][1] = parse_output(output)
-            break
-        # Here, `proc` has finished with return code `retcode`
+            print("none  was ", retcode, "output", output, "error", error)
         elif retcode != 0:
+            output, error = proc.communicate()
             """Error handling."""
-            results[proc.pid][1] = math.inf
+            print("not 0 was ", "output", output, "error", error)
         else:
-            results[proc.pid][1] = math.inf
-            #results[proc.pid][1] =
-            #results[proc.pid][1] = parse_output(proc.stdout.read())
+            # results[proc.pid][1] =
+            try:
+                r = proc.stdout.read()
+            except ValueError:
+                print("was error")
+                pass
+            results[proc.pid][1] =  parse_output(r)
+
+
     for k in results:
         res = results[k]
 
