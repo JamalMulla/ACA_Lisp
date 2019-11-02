@@ -136,7 +136,7 @@ def run_generation(generation, params):
         my_env = os.environ.copy()
         my_env["SSFLAGS"] = dna_to_options(i.DNA, params)
         proc = Popen(['./run-wattch'], stdout=PIPE, stderr=PIPE, env=my_env)
-        results[proc.pid] = (i, math.inf)
+        results[proc.pid] = [i, math.inf]
         running_procs.append(proc)
 
     while running_procs:
@@ -157,8 +157,8 @@ def run_generation(generation, params):
             #results[proc.pid][1] =
             results[proc.pid][1] = parse_output(proc.stdout.read())
     for k in results:
-        (i, fitness) =  results[k]
-        generation[i].fitness = fitness
+        res = results[k]
+        generation[res[0]].fitness = res[1]
 
     return generation
 
