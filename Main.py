@@ -109,9 +109,10 @@ def get_top_from_pop(generation):
 
 
 def parse_output(output):
-    lines = output.split("\n")
+    lines = output.splitlines()
     res = 0
     for line in lines:
+        line = line.decode('utf-8')
         if "total_power_per_cycle_cc1" in line:
             parts = line.split()
             for part in parts:
@@ -149,15 +150,21 @@ def run_generation(generation, params):
                 time.sleep(.5)
                 continue
 
+        if retcode == None:
+            output, error = proc.communicate()
+            results[proc.pid][1] = parse_output(output)
+            break
         # Here, `proc` has finished with return code `retcode`
-        if retcode != 0:
+        elif retcode != 0:
             """Error handling."""
             results[proc.pid][1] = math.inf
         else:
+            results[proc.pid][1] = math.inf
             #results[proc.pid][1] =
-            results[proc.pid][1] = parse_output(proc.stdout.read())
+            #results[proc.pid][1] = parse_output(proc.stdout.read())
     for k in results:
         res = results[k]
+
         generation[res[0]].fitness = res[1]
 
     return generation
