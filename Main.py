@@ -9,9 +9,9 @@ from subprocess import Popen, PIPE
 import os
 
 
-POPULATION = 100
+POPULATION = 32
 NUM_GENES = 39
-GENERATIONS = 50
+GENERATIONS = 5
 
 
 @dataclass(unsafe_hash=True)
@@ -58,7 +58,7 @@ def create_individual(empty=False):
         DNA = []
     else:
         DNA = [random.randrange(0, 15) for _ in range(NUM_GENES)]
-    return Individual(DNA, random.randint(100, 10000000))
+    return Individual(DNA, math.inf)
 
 def create_population():
     return [create_individual() for _ in range(POPULATION)]
@@ -118,18 +118,18 @@ def parse_output(output):
             for part in parts:
                 try:
                     res = float(part)
-                    if res <= 100000:
+                    if res <= 1000000:
                         res = math.inf
                     break
                 except ValueError:
                     pass
         if res != 0:
             break
+
     return res
 
 def run_generation(generation, params):
-
-
+    start = time.time()
     running_procs = []
     results = {}
 
@@ -147,7 +147,7 @@ def run_generation(generation, params):
                 running_procs.remove(proc)
                 break
             else:  # No process is done, wait a bit and check again.
-                time.sleep(.5)
+                time.sleep(.1)
                 continue
 
         if retcode == None:
@@ -167,23 +167,28 @@ def run_generation(generation, params):
 
         generation[res[0]].fitness = res[1]
 
+    print("--- Took %s seconds to run generations ---" % (time.time() - start))
     return generation
 
 if __name__ == '__main__':
     params = get_params()
 
-    # DNA = [0, 10, 4, 4, 1, 22, 3, 4, 2, 3, 1, 0, 2, 1, 3, 2, 0, 2, 2, 2, 1, 9, 1, 0, 0, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0,
-    #        0, 2, 1, 2]
-    #dna_to_options(DNA, params)
+
     pop = create_population()
 
     for i in range(GENERATIONS):
+        start = time.time()
+        print("Generation ", i)
         pop = run_generation(pop, params)
         topHalf = selection(pop)
+        pair_start = time.time()
         pop = pair(topHalf)
+        print("--- Took %s seconds to create new population ---" % (time.time() - pair_start))
 
         top = get_top_from_pop(pop)
         print(dna_to_options(top.DNA, params), top.fitness)
+
+        print("--- Took %s seconds in total ---" % (time.time() - start))
 
     # for individual in create_population():
     #     print(dna_to_options(individual.DNA, params))
