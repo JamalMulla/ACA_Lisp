@@ -9,9 +9,9 @@ from subprocess import Popen, PIPE
 import os
 
 
-POPULATION = 32
+POPULATION = 200
 NUM_GENES = 39
-GENERATIONS = 5
+GENERATIONS = 100
 
 
 @dataclass(unsafe_hash=True)
@@ -104,8 +104,6 @@ def mutate(dna):
     dna = [int(round(x+random.uniform(-1, 1))) for x in dna]
     return dna
 
-def get_top_from_pop(generation):
-    return selection(generation)[0]
 
 
 def parse_output(output):
@@ -113,7 +111,8 @@ def parse_output(output):
     res = 0
     for line in lines:
         line = line.decode('utf-8')
-        if "total_power_per_cycle_cc1" in line:
+        #print(line)
+        if "total_power_cycle_cc1" in line:
             parts = line.split()
             for part in parts:
                 try:
@@ -125,7 +124,9 @@ def parse_output(output):
                     pass
         if res != 0:
             break
-
+    if res == 0:
+        res = math.inf
+    #print("final res", res)
     return res
 
 def run_generation(generation, params):
@@ -134,9 +135,12 @@ def run_generation(generation, params):
     results = {}
 
     for i, e in enumerate(generation):
-        my_env = os.environ.copy()
-        my_env["SSFLAGS"] = dna_to_options(e.DNA, params)
-        proc = Popen(['./run-wattch'], stdout=PIPE, stderr=PIPE, env=my_env)
+        env = {
+            **os.environ,
+            "SSFLAGS": dna_to_options(e.DNA, params),
+        }
+        proc = Popen(['./run-wattch'], stdout=PIPE, stderr=PIPE, shell=True, env=env)
+
         results[proc.pid] = [i, math.inf]
         running_procs.append(proc)
 
@@ -144,6 +148,7 @@ def run_generation(generation, params):
         for proc in running_procs:
             retcode = proc.poll()
             if retcode is not None:  # Process finished.
+                print("finished process", proc.pid)
                 running_procs.remove(proc)
                 break
             else:  # No process is done, wait a bit and check again.
@@ -153,19 +158,17 @@ def run_generation(generation, params):
         if retcode == None:
             output, error = proc.communicate()
             results[proc.pid][1] = parse_output(output)
-            print("none  was ", retcode, "output", output, "error", error)
-        elif retcode != 0:
-            output, error = proc.communicate()
-            """Error handling."""
-            print("not 0 was ", "output", output, "error", error)
+            #print("success:", proc.pid)
+            #print("none  was retcode", "output", output, "error", error)
         else:
             # results[proc.pid][1] =
             try:
-                r = proc.stdout.read()
+                output, error = proc.communicate()
+                #print("fail:", proc.pid)
+                results[proc.pid][1] =  parse_output(error)
             except ValueError:
                 print("was error")
                 pass
-            results[proc.pid][1] =  parse_output(r)
 
 
     for k in results:
@@ -176,26 +179,38 @@ def run_generation(generation, params):
     print("--- Took %s seconds to run generations ---" % (time.time() - start))
     return generation
 
+def write_list_to_file(l):
+    with open('results.txt', 'w') as f:
+        for item in l:
+            f.write("%s\n" % item)
+
+
 if __name__ == '__main__':
     params = get_params()
 
 
     pop = create_population()
 
+    results = []
     for i in range(GENERATIONS):
         start = time.time()
         print("Generation ", i)
         pop = run_generation(pop, params)
         topHalf = selection(pop)
+        top = topHalf[0]
+        print("top", top.fitness)
+        results.append(top)
+        for i in topHalf:
+            print(i.fitness)
+
         pair_start = time.time()
         pop = pair(topHalf)
         print("--- Took %s seconds to create new population ---" % (time.time() - pair_start))
-
-        top = get_top_from_pop(pop)
+        
         print(dna_to_options(top.DNA, params), top.fitness)
 
         print("--- Took %s seconds in total ---" % (time.time() - start))
-
+    write_list_to_file(results)
     # for individual in create_population():
     #     print(dna_to_options(individual.DNA, params))
     #print(dna_to_options(create_individual(), params))
